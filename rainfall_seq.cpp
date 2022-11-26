@@ -85,6 +85,8 @@ public void rainfall(vector<vector<int>> & elevation, vector<vector<float>> & ra
                     rainAbsorb[i][j] += rainDrops[i][j];
                     rainDrops[i][j] = 0;
                 }
+                //calculate trickle to neighbor
+                
             }
         }
         for(int i = 0; i < dimension; i++) {
@@ -96,32 +98,46 @@ public void rainfall(vector<vector<int>> & elevation, vector<vector<float>> & ra
 
 }
 
+public void checkInput(int element,vector<int>& low_elev, vector<vector<int>>& elevation, unordered_map<int, vector<pair<int, int>>>& map, int i, int j) {
+    if(element >= elevation[i][j]){
+         if(map.contains(elevation[i][j])){
+            auto it = map.find(elevation[i][j]);
+            it.second.push(new pair<int, int>(i, j));
+        } else {
+            vector<pair<int, int>> vec(make_pair(i, j));
+            map.insert(make_pair(elevation[i][j], vec));
+            low_elev.push_back(elevation[i][j]);
+        }
+    }
+}
+
 public void trickle(int i, int j, int dimension, vector<vector<int>>& elevation, vector<vector<int>>& trickle,  vector<vector<int>>& rainDrops) {
     int neiborElev[4][2];
-    //crrate a hashmap<int, list> store elevation and coorinate
+    //create a hashmap<int, list> store elevation and coordinate
     //create an list to store elevations
     //sort the list
     //record the number of lowest coordinate, go hashmap to find the coordinate
     //update trickle
-    unordered_map<int, vector<int[]>> map;
+    unordered_map<int, vector<pair<int, int>>> map;
+    vector<int> low_elev;
     if(i > 0) {
         // neiborElev[0][0] = elevation[i - 1][j];
         // neiborElev[0][1] = 0; 
-        map[elevation[i - 1][j]]
+        checkInput(elevation, map, i - 1, j);
+        
     }
     if(j > 0) {
-        neiborElev[1][0] = elevation[i][j - 1];
-        neiborElev[1][1] = 1; 
+         checkInput(elevation, map, i, j - 1);
     }
     if(i < dimension - 1) {
-        neiborElev[2][0] = elevation[i + 1][j];
-        neiborElev[2][1] = 2; 
+         checkInput(elevation, map, i + 1, j);
     }
     if(j < dimension - 1) {
-        neiborElev[3][0] = elevation[i][j + 1];
-        neiborElev[3][1] = 3; 
+        checkInput(elevation, map, i, j + 1);
     }
-    Array.
-    
+    sort(low_elev.begin(), low_elev.end());
+    int lowest = low_elev[0];
+    vector<pair<int, int>> points = map.find(lowest).second();
 
 }
+
