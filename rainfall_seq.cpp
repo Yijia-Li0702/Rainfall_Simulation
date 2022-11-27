@@ -68,7 +68,7 @@ public void rainfall(vector<vector<int>> & elevation, vector<vector<float>> & ra
                     struct timespec & start_time, struct timespec & end_time) {
     int remaining = 1;
     vector<vector<float>> rainDrops(dimension, vector<float>(dimension, 0));
-    vector<vector<float>> trickle(dimension, vector<float>(dimension, 0));
+    vector<vector<vector<vector<float>>>> trickle(dimension, vector<vector<vector<float>(dimension, 0)>>);
     int steps = 0;
     while(remaining) {
         step++;
@@ -86,12 +86,12 @@ public void rainfall(vector<vector<int>> & elevation, vector<vector<float>> & ra
                     rainDrops[i][j] = 0;
                 }
                 //calculate trickle to neighbor
-                
+
             }
         }
         for(int i = 0; i < dimension; i++) {
             for(int j = 0; j < dimension; j++) {
-
+                
             }
         }
     }
@@ -124,7 +124,6 @@ public void trickle(int i, int j, int dimension, vector<vector<int>>& elevation,
         // neiborElev[0][0] = elevation[i - 1][j];
         // neiborElev[0][1] = 0; 
         checkInput(elevation, map, i - 1, j);
-        
     }
     if(j > 0) {
          checkInput(elevation, map, i, j - 1);
