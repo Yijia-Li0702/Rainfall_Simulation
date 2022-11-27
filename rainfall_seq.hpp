@@ -148,9 +148,10 @@ int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb,
     vector<pair<int, int>> trickle_neighs;
 
     int steps = 1; // total steps
-    int drain_num = 0;
+    bool is_dry;
     gettimeofday(&start_time, NULL);
     while (true) {
+        is_dry = true;
         for (int i = 0; i < dimension; i++) {
             for (int j = 0; j < dimension; j++) {
                 // rain fall
@@ -190,18 +191,17 @@ int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb,
         for (int i = 0; i < dimension; i++) {
             for (int j = 0; j < dimension; j++) {
                 new_rain_drops[i][j] += temp_trickle[i][j];
-                if (new_rain_drops[i][j] == 0) {
-                    drain_num++;
+                if (new_rain_drops[i][j] > 0) {
+                    is_dry = false;
                 }
             }
         }
-        if (drain_num == dimension * dimension) {
+        if (is_dry && steps > time_steps) {
             gettimeofday(&end_time, NULL);
             return steps;
         }
         steps++;
         temp_trickle = zero_trickle;
         rain_drops = new_rain_drops;
-        drain_num = 0;
     }
 }
