@@ -48,80 +48,89 @@ bool readFile(string elevation_file, vector<vector<int>> &elevation) {
     return true;
 }
 
-void rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rainAbsorb, int absorpRate, 
-                int timeSteps, int dimension, struct timespec &start_time, struct timespec &end_time) {
-    int remaining = 1;
-    vector<vector<float>> rainDrops(dimension, vector<float>(dimension, 0));
-    vector<vector<float>> trickle(dimension, vector<float>(dimension, 0));
-    int steps = 0;
-    while (remaining) {
-        steps++;
-        for (int i = 0; i < dimension; i++) {
-            for (int j = 0; j < dimension; j++) {
-                if (timeSteps > 0) {
-                    rainDrops[i][j]++;
-                }
-                rainDrops[i][j] += trickle[i][j];
-                if (rainDrops[i][j] >= absorpRate) {
-                    rainDrops[i][j] -= absorpRate;
-                    rainAbsorb[i][j] += absorpRate;
-                } else {
-                    rainAbsorb[i][j] += rainDrops[i][j];
-                    rainDrops[i][j] = 0;
-                }
-                // calculate trickle to neighbor
-            }
-        }
-        for (int i = 0; i < dimension; i++) {
-            for (int j = 0; j < dimension; j++) {
-            }
-        }
-    }
-}
-
-void checkInput(int element, vector<int> &low_elev, vector<vector<int>> &elevation, 
+void checkInput(int central_elevation, int &min_elevation, int neigh_elevation,
                     unordered_map<int, vector<pair<int, int>>> &map, int i, int j) {
-    if (element >= elevation[i][j]) {
-        if (map.find(elevation[i][j]) != map.end()) {
-            auto pair_list = map[elevation[i][j]];
+    // if neighbour's elevation is smaller, add to map
+    if (neigh_elevation < central_elevation) {
+        if (map.find(neigh_elevation) != map.end()) {
+            auto pair_list = map[neigh_elevation];
             pair_list.emplace_back(i, j);
-        }
-        else {
+        } else {
             vector<pair<int, int>> vec;
             vec.emplace_back(i, j);
-            map[elevation[i][j]] = vec;
-            low_elev.push_back(elevation[i][j]);
+            map[neigh_elevation] = vec;
+        }
+        if (neigh_elevation < min_elevation) {
+            min_elevation = neigh_elevation;
         }
     }
 }
 
 void trickle(int i, int j, int dimension, vector<vector<int>> &elevation, 
-                vector<vector<int>> &trickle, vector<vector<int>> &rainDrops) {
-    int neiborElev[4][2];
+                vector<vector<float>> &trickle, vector<vector<float>> &rain_drops) {
     // create a hashmap<int, list> store elevation and coordinate
     // create an list to store elevations
     // sort the list
     // record the number of lowest coordinate, go hashmap to find the coordinate
     // update trickle
+    vector<pair<int, int>> trickle_neighs;
     unordered_map<int, vector<pair<int, int>>> map;
-    vector<int> low_elev;
-    // if (i > 0) {
-    //     // neiborElev[0][0] = elevation[i - 1][j];
-    //     // neiborElev[0][1] = 0;
-    //     checkInput(elevation, map, i - 1, j);
+    int central_elevation = elevation[i][j];
+    int min_elevation = INT_MAX;
+    // north
+    if (i - 1 >= 0) {
+        checkInput(central_elevation, min_elevation, elevation[i - 1][j], map, i - 1, j);
+    }
+    // south
+    if (i + 1 < dimension) {
+        checkInput(central_elevation, min_elevation, elevation[i + 1][j], map, i + 1, j);
+    }
+    // west
+    if (j - 1 >= 0) {
+        checkInput(central_elevation, min_elevation, elevation[i][j - 1], map, i, j - 1);
+    }
+    // east
+    if (j + 1 < dimension) {
+        checkInput(central_elevation, min_elevation, elevation[i][j + 1], map, i, j + 1);
+    }
+    if (min_elevation != INT_MAX) {
+        trickle_neighs = map[min_elevation];
+        // update
+    } else {
+        // no update
+    }
+}
+
+void rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb, float absorp_rate, 
+                int time_steps, int dimension, struct timespec &start_time, struct timespec &end_time,
+                int &steps) {
+    int remaining = 1;
+    vector<vector<float>> rain_drops(dimension, vector<float>(dimension, 0));
+    vector<vector<float>> trickle(dimension, vector<float>(dimension, 0));
+    
+    // while (remaining) {
+    //     steps++;
+    //     for (int i = 0; i < dimension; i++) {
+    //         for (int j = 0; j < dimension; j++) {
+    //             if (time_steps > 0) {
+    //                 rain_drops[i][j]++;
+    //             }
+    //             rain_drops[i][j] += trickle[i][j];
+    //             if (rain_drops[i][j] >= absorp_rate) {
+    //                 rain_drops[i][j] -= absorp_rate;
+    //                 rain_absorb[i][j] += absorp_rate;
+    //             } else {
+    //                 rain_absorb[i][j] += rain_drops[i][j];
+    //                 rain_drops[i][j] = 0;
+    //             }
+    //             // calculate trickle to neighbor
+    //         }
+    //     }
+    //     for (int i = 0; i < dimension; i++) {
+    //         for (int j = 0; j < dimension; j++) {
+    //         }
+    //     }
     // }
-    // if (j > 0) {
-    //     checkInput(elevation, map, i, j - 1);
-    // }
-    // if (i < dimension - 1) {
-    //     checkInput(elevation, map, i + 1, j);
-    // }
-    // if (j < dimension - 1) {
-    //     checkInput(elevation, map, i, j + 1);
-    // }
-    // sort(low_elev.begin(), low_elev.end());
-    // int lowest = low_elev[0];
-    // vector<pair<int, int>> points = map.find(lowest).second();
 }
 
 int main(int argc, char *argv[]) {
