@@ -12,8 +12,10 @@ double calc_time(struct timeval start, struct timeval end);
 void print_error_msg();
 void print_result(int total_steps, double total_time, vector<vector<float>> &rain_absorb, int dimension);
 bool read_file(string elevation_file, vector<vector<int>> &elevation);
-int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb, float absorp_rate, 
-                int time_steps, int dimension, struct timeval &start_time, struct timeval &end_time);
+// int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb, float absorp_rate, 
+//                 int time_steps, int dimension, struct timeval &start_time, struct timeval &end_time);
+int rainfall();
+void eachTimeStep(int id, mutex &lock, int threadID);
 
 int main(int argc, char *argv[]) {
     // Error format

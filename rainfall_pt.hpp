@@ -250,50 +250,49 @@ int rainfall() {
     }
 }
 
-    void eachTimeStep(int id, mutex &lock, int threadID) {
-        int blockSize = dimension / numThreads;
-        for (int i = threadID * blockSize; i < min((threadID + 1)* blockSize, dimension) ; i++) {
-            for (int j = 0; j < dimension; j++) {
-                //1) Receive a new raindrop (if it is still raining) for each point.
-                if (steps <= time_steps) {
-                    rain_drops[i][j]++;
+void eachTimeStep(int id, mutex &lock, int threadID) {
+    int blockSize = dimension / numThreads;
+    for (int i = threadID * blockSize; i < min((threadID + 1)* blockSize, dimension) ; i++) {
+        for (int j = 0; j < dimension; j++) {
+            //1) Receive a new raindrop (if it is still raining) for each point.
+            if (steps <= time_steps) {
+                rain_drops[i][j]++;
+            }
+            //2) If there are raindrops on a point, absorb water into the point
+            if (rain_drops[i][j] >= absorp_rate) {
+                rain_absorb[i][j] += absorp_rate;
+                rain_drops[i][j] -= absorp_rate;
+            } else {
+                rain_absorb[i][j] += rain_drops[i][j];
+                rain_drops[i][j] = 0;
+            }
+            new_rain_drops[i][j] = rain_drops[i][j];
+            if (rain_drops[i][j] == 0) {
+                continue;
+            }
+            //3a) Calculate the number of raindrops that will next trickle to the lowest neighbor(s)
+            float trickle_drops = (rain_drops[i][j] >= 1) ? 1 : rain_drops[i][j];
+            // trickle_neighs = trickle(i, j, dimension, elevation);
+            
+            trickle_neighs = trickle_neighs_list[i * dimension + j];
+            if(i == threadID * blockSize || i == min((threadID + 1)* blockSize - 1, dimension - 1)) {
+                lock.lock();
+            }
+            if (trickle_neighs.size() == 0) {
+                continue;
+            } else if (trickle_neighs.size() == 1) {
+                auto neighbour = trickle_neighs[0];
+                temp_trickle[neighbour.first][neighbour.second] += trickle_drops;
+                new_rain_drops[i][j] -= trickle_drops;
+            } else {
+                for (auto neighbour : trickle_neighs) {
+                    temp_trickle[neighbour.first][neighbour.second] +=  1.0 * trickle_drops / trickle_neighs.size();
                 }
-                //2) If there are raindrops on a point, absorb water into the point
-                if (rain_drops[i][j] >= absorp_rate) {
-                    rain_absorb[i][j] += absorp_rate;
-                    rain_drops[i][j] -= absorp_rate;
-                } else {
-                    rain_absorb[i][j] += rain_drops[i][j];
-                    rain_drops[i][j] = 0;
-                }
-                new_rain_drops[i][j] = rain_drops[i][j];
-                if (rain_drops[i][j] == 0) {
-                    continue;
-                }
-                //3a) Calculate the number of raindrops that will next trickle to the lowest neighbor(s)
-                float trickle_drops = (rain_drops[i][j] >= 1) ? 1 : rain_drops[i][j];
-                // trickle_neighs = trickle(i, j, dimension, elevation);
-                
-                trickle_neighs = trickle_neighs_list[i * dimension + j];
-                if(i == threadID * blockSize || i == min((threadID + 1)* blockSize - 1, dimension - 1)) {
-                    lock.lock();
-                }
-                if (trickle_neighs.size() == 0) {
-                    continue;
-                } else if (trickle_neighs.size() == 1) {
-                    auto neighbour = trickle_neighs[0];
-                    temp_trickle[neighbour.first][neighbour.second] += trickle_drops;
-                    new_rain_drops[i][j] -= trickle_drops;
-                } else {
-                    for (auto neighbour : trickle_neighs) {
-                        temp_trickle[neighbour.first][neighbour.second] +=  1.0 * trickle_drops / trickle_neighs.size();
-                    }
-                    new_rain_drops[i][j] -= trickle_drops;
-                }
-                if(i == threadID * blockSize || i == min((threadID + 1)* blockSize - 1, dimension - 1)) {
-                    lock.unlock();
-                }
+                new_rain_drops[i][j] -= trickle_drops;
+            }
+            if(i == threadID * blockSize || i == min((threadID + 1)* blockSize - 1, dimension - 1)) {
+                lock.unlock();
             }
         }
-        
+    }       
 }
