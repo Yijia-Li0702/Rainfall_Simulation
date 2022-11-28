@@ -7,6 +7,8 @@
 #include <climits>
 #include <sys/time.h>
 #include <iomanip>
+#include <thread>
+#include <mutex>
 
 using namespace std;
 
@@ -138,81 +140,3 @@ vector<vector<pair<int, int>>> trickle_list(vector<vector<int>> &elevation, int 
     return result;
 }
 
-void first_traverse(vector<vector<float>> &rain_drops, vector<vector<float>> &rain_absorb, int dimension,
-                        int steps, int time_steps, float absorp_rate, vector<vector<float>> &new_rain_drops,
-                        vector<vector<pair<int, int>>> &trickle_neighs_list, vector<vector<float>> &temp_trickle) {
-    vector<pair<int, int>> trickle_neighs;
-    for (int i = 0; i < dimension; i++) {
-        for (int j = 0; j < dimension; j++) {
-            // rain fall
-            if (steps <= time_steps) {
-                rain_drops[i][j]++;
-            }
-            // absorb into the ground
-            if (rain_drops[i][j] >= absorp_rate) {
-                rain_absorb[i][j] += absorp_rate;
-                rain_drops[i][j] -= absorp_rate;
-            } else {
-                rain_absorb[i][j] += rain_drops[i][j];
-                rain_drops[i][j] = 0;
-            }
-            new_rain_drops[i][j] = rain_drops[i][j];
-            // get the trickle neighbours list
-            if (rain_drops[i][j] == 0) {
-                continue;
-            }
-            float trickle_drops = (rain_drops[i][j] >= 1) ? 1 : rain_drops[i][j];
-            // trickle_neighs = trickle(i, j, dimension, elevation);
-            trickle_neighs = trickle_neighs_list[i * dimension + j];
-            if (trickle_neighs.size() == 0) {
-                continue;
-            } else if (trickle_neighs.size() == 1) {
-                auto neighbour = trickle_neighs[0];
-                temp_trickle[neighbour.first][neighbour.second] += trickle_drops;
-                new_rain_drops[i][j] -= trickle_drops;
-            } else {
-                for (auto neighbour : trickle_neighs) {
-                    temp_trickle[neighbour.first][neighbour.second] +=  1.0 * trickle_drops / trickle_neighs.size();
-                }
-                new_rain_drops[i][j] -= trickle_drops;
-            }
-        }
-    }
-}
-
-void second_traverse(vector<vector<float>> &new_rain_drops, vector<vector<float>> &temp_trickle, int dimension, bool &is_dry) {
-    for (int i = 0; i < dimension; i++) {
-        for (int j = 0; j < dimension; j++) {
-            new_rain_drops[i][j] += temp_trickle[i][j];
-            if (new_rain_drops[i][j] > 0) {
-                is_dry = false;
-            }
-        }
-    }
-}
-
-int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb, float absorp_rate, 
-                int time_steps, int dimension, struct timeval &start_time, struct timeval &end_time) {
-    vector<vector<float>> rain_drops(dimension, vector<float>(dimension, 0));
-    vector<vector<float>> new_rain_drops(dimension, vector<float>(dimension, 0));
-    vector<vector<float>> temp_trickle(dimension, vector<float>(dimension, 0));
-    vector<vector<float>> zero_trickle(dimension, vector<float>(dimension, 0));
-    vector<vector<pair<int, int>>> trickle_neighs_list = trickle_list(elevation, dimension);
-    vector<pair<int, int>> trickle_neighs;
-
-    int steps = 1; // total steps
-    bool is_dry;
-    gettimeofday(&start_time, NULL);
-    while (true) {
-        is_dry = true;
-        first_traverse(rain_drops, rain_absorb, dimension, steps, time_steps, absorp_rate, new_rain_drops, trickle_neighs_list, temp_trickle);
-        second_traverse(new_rain_drops, temp_trickle, dimension, is_dry);
-        if (is_dry && steps > time_steps) {
-            gettimeofday(&end_time, NULL);
-            return steps;
-        }
-        steps++;
-        temp_trickle = zero_trickle;
-        rain_drops = new_rain_drops;
-    }
-}
