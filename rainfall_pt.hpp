@@ -153,16 +153,9 @@ vector<vector<pair<int, int>>> trickle_list(vector<vector<int>> &elevation, int 
     return result;
 }
 
-int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb, float absorp_rate, 
-                int time_steps, int dimension, struct timeval &start_time, struct timeval &end_time, int numThreads) {
-    elevation = elevation;
-    rain_absorb = rain_absorb;
-    absorp_rate = absorp_rate;
-    time_steps = time_steps;
-    dimension = dimension;
-    start_time = start_time;
-    end_time = end_time;
-    numThreads = numThreads;
+// int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb, float absorp_rate, 
+//                 int time_steps, int dimension, struct timeval &start_time, struct timeval &end_time, int numThreads) {
+int rainfall() {
     
     mutex lock;
     ctpl::thread_pool pool(numThreads);
@@ -172,9 +165,6 @@ int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb,
     temp_trickle = vector<vector<float>>(dimension, vector<float>(dimension, 0));
     vector<vector<float>> zero_trickle(dimension, vector<float>(dimension, 0));
     //TODO: can parallize
-    for(int i = 0; i < numThreads; i++) {
-
-    }
     trickle_neighs_list = trickle_list(elevation, dimension);
     // vector<pair<int, int>> trickle_neighs;
 
@@ -185,10 +175,7 @@ int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb,
         is_dry = true;
         future<void> future[numThreads]; 
         for(int i = 0; i < numThreads; i++) {
-            // future[i] = pool.push(eachTimeStep(rain_drops, new_rain_drops, temp_trickle, trickle_neighs_list, trickle_neighs, elevation, rain_absorb,
-            //             absorp_rate, time_steps, dimension, start_time, end_time, numThreads, lock, i, steps));
-            future[i] = pool.push(eachTimeStep, i);
-
+            future[i] = pool.push(eachTimeStep, lock, i);
         }
         for (int i = 0; i < numThreads; i++) {
             future[i].wait(); // synchronize all threads
@@ -263,10 +250,7 @@ int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb,
     }
 }
 
-// void eachTimeStep(vector<vector<float>> &rain_drops, vector<vector<float>> &new_rain_drops, vector<vector<float>> &temp_trickle,
-//                 vector<vector<pair<int, int>>> &trickle_neighs_list, vector<pair<int, int>> &trickle_neighs, vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb, float absorp_rate, 
-//                 int time_steps, int dimension, struct timeval &start_time, struct timeval &end_time, int numThreads, mutex &lock, int &threadID, int &steps) {
-    void eachTimeStep(mutex &lock, int &threadID) {
+    void eachTimeStep(int id, mutex &lock, int threadID) {
         int blockSize = dimension / numThreads;
         for (int i = threadID * blockSize; i < min((threadID + 1)* blockSize, dimension) ; i++) {
             for (int j = 0; j < dimension; j++) {
