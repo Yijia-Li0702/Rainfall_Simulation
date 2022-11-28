@@ -7,8 +7,23 @@
 #include <climits>
 #include <sys/time.h>
 #include <iomanip>
+#include "ctpl_stl.h"
 
 using namespace std;
+vector<vector<int>> elevation;
+vector<vector<float>> rain_absorb;
+float absorp_rate;
+int time_steps;
+int dimension;
+struct timeval start_time;
+struct timeval end_time;
+int numThreads;
+vector<vector<float>> rain_drops;
+vector<vector<float>> new_rain_drops;
+vector<vector<float>> temp_trickle;
+vector<vector<pair<int, int>>> trickle_neighs_list;
+vector<pair<int, int>> trickle_neighs;
+int steps;
 
 double calc_time(struct timeval start, struct timeval end) {
     double start_sec = (double)start.tv_sec*1000000.0 + (double)start.tv_usec;
@@ -139,21 +154,121 @@ vector<vector<pair<int, int>>> trickle_list(vector<vector<int>> &elevation, int 
 }
 
 int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb, float absorp_rate, 
-                int time_steps, int dimension, struct timeval &start_time, struct timeval &end_time) {
-    vector<vector<float>> rain_drops(dimension, vector<float>(dimension, 0));
-    vector<vector<float>> new_rain_drops(dimension, vector<float>(dimension, 0));
-    vector<vector<float>> temp_trickle(dimension, vector<float>(dimension, 0));
-    vector<vector<float>> zero_trickle(dimension, vector<float>(dimension, 0));
-    vector<vector<pair<int, int>>> trickle_neighs_list = trickle_list(elevation, dimension);
-    vector<pair<int, int>> trickle_neighs;
+                int time_steps, int dimension, struct timeval &start_time, struct timeval &end_time, int numThreads) {
+    elevation = elevation;
+    rain_absorb = rain_absorb;
+    absorp_rate = absorp_rate;
+    time_steps = time_steps;
+    dimension = dimension;
+    start_time = start_time;
+    end_time = end_time;
+    numThreads = numThreads;
+    
+    mutex lock;
+    ctpl::thread_pool pool(numThreads);
 
-    int steps = 1; // total steps
+    rain_drops = vector<vector<float>>(dimension, vector<float>(dimension, 0));
+    new_rain_drops = vector<vector<float>>(dimension, vector<float>(dimension, 0));
+    temp_trickle = vector<vector<float>>(dimension, vector<float>(dimension, 0));
+    vector<vector<float>> zero_trickle(dimension, vector<float>(dimension, 0));
+    //TODO: can parallize
+    for(int i = 0; i < numThreads; i++) {
+
+    }
+    trickle_neighs_list = trickle_list(elevation, dimension);
+    // vector<pair<int, int>> trickle_neighs;
+
+    steps = 1; // total steps
     bool is_dry;
     gettimeofday(&start_time, NULL);
     while (true) {
         is_dry = true;
-        //Traverse over all landscape points
+        future<void> future[numThreads]; 
+        for(int i = 0; i < numThreads; i++) {
+            // future[i] = pool.push(eachTimeStep(rain_drops, new_rain_drops, temp_trickle, trickle_neighs_list, trickle_neighs, elevation, rain_absorb,
+            //             absorp_rate, time_steps, dimension, start_time, end_time, numThreads, lock, i, steps));
+            future[i] = pool.push(eachTimeStep, i);
+
+        }
+        for (int i = 0; i < numThreads; i++) {
+            future[i].wait(); // synchronize all threads
+        }
+        // //Traverse over all landscape points
+        // for (int i = 0; i < dimension; i++) {
+        //     for (int j = 0; j < dimension; j++) {
+        //         //1) Receive a new raindrop (if it is still raining) for each point.
+        //         if (steps <= time_steps) {
+        //             rain_drops[i][j]++;
+        //         }
+        //         //2) If there are raindrops on a point, absorb water into the point
+        //         if (rain_drops[i][j] >= absorp_rate) {
+        //             rain_absorb[i][j] += absorp_rate;
+        //             rain_drops[i][j] -= absorp_rate;
+        //         } else {
+        //             rain_absorb[i][j] += rain_drops[i][j];
+        //             rain_drops[i][j] = 0;
+        //         }
+        //         new_rain_drops[i][j] = rain_drops[i][j];
+        //         if (rain_drops[i][j] == 0) {
+        //             continue;
+        //         }
+        //         //3a) Calculate the number of raindrops that will next trickle to the lowest neighbor(s)
+        //         float trickle_drops = (rain_drops[i][j] >= 1) ? 1 : rain_drops[i][j];
+        //         // trickle_neighs = trickle(i, j, dimension, elevation);
+        //         trickle_neighs = trickle_neighs_list[i * dimension + j];
+        //         if (trickle_neighs.size() == 0) {
+        //             continue;
+        //         } else if (trickle_neighs.size() == 1) {
+        //             auto neighbour = trickle_neighs[0];
+        //             temp_trickle[neighbour.first][neighbour.second] += trickle_drops;
+        //             new_rain_drops[i][j] -= trickle_drops;
+        //         } else {
+        //             for (auto neighbour : trickle_neighs) {
+        //                 temp_trickle[neighbour.first][neighbour.second] +=  1.0 * trickle_drops / trickle_neighs.size();
+        //             }
+        //             new_rain_drops[i][j] -= trickle_drops;
+        //         }
+        //     }
+        // }
+        // //Make a second traversal over all landscape points
+        // //3b) For each point, use the calculated number of raindrops that will trickle to the
+        // //lowest neighbor(s) to update the number of raindrops at each lowest neighbor, if applicable.
+        // for (int i = 0; i < dimension; i++) {
+        //     for (int j = 0; j < dimension; j++) {
+        //         new_rain_drops[i][j] += temp_trickle[i][j];
+        //         if (new_rain_drops[i][j] > 0) {
+        //             is_dry = false;
+        //         }
+        //     }
+        // }
+        //Make a second traversal over all landscape points
+        //3b) For each point, use the calculated number of raindrops that will trickle to the
+        //lowest neighbor(s) to update the number of raindrops at each lowest neighbor, if applicable.
         for (int i = 0; i < dimension; i++) {
+            for (int j = 0; j < dimension; j++) {
+                new_rain_drops[i][j] += temp_trickle[i][j];
+                if (new_rain_drops[i][j] > 0) {
+                    is_dry = false;
+                }
+            }
+        }
+
+        if (is_dry && steps > time_steps) {
+            gettimeofday(&end_time, NULL);
+            return steps;
+        }
+        steps++;
+        temp_trickle = zero_trickle;
+        rain_drops = new_rain_drops;
+    }
+}
+
+// void eachTimeStep(vector<vector<float>> &rain_drops, vector<vector<float>> &new_rain_drops, vector<vector<float>> &temp_trickle,
+//                 vector<vector<pair<int, int>>> &trickle_neighs_list, vector<pair<int, int>> &trickle_neighs, vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb, float absorp_rate, 
+//                 int time_steps, int dimension, struct timeval &start_time, struct timeval &end_time, int numThreads, mutex &lock, int &threadID, int &steps) {
+    void eachTimeStep(mutex &lock, int &threadID) {
+        int blockSize = dimension / numThreads;
+        for (int i = threadID * blockSize; i < min((threadID + 1)* blockSize, dimension) ; i++) {
             for (int j = 0; j < dimension; j++) {
                 //1) Receive a new raindrop (if it is still raining) for each point.
                 if (steps <= time_steps) {
@@ -174,7 +289,11 @@ int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb,
                 //3a) Calculate the number of raindrops that will next trickle to the lowest neighbor(s)
                 float trickle_drops = (rain_drops[i][j] >= 1) ? 1 : rain_drops[i][j];
                 // trickle_neighs = trickle(i, j, dimension, elevation);
+                
                 trickle_neighs = trickle_neighs_list[i * dimension + j];
+                if(i == threadID * blockSize || i == min((threadID + 1)* blockSize - 1, dimension - 1)) {
+                    lock.lock();
+                }
                 if (trickle_neighs.size() == 0) {
                     continue;
                 } else if (trickle_neighs.size() == 1) {
@@ -187,25 +306,10 @@ int rainfall(vector<vector<int>> &elevation, vector<vector<float>> &rain_absorb,
                     }
                     new_rain_drops[i][j] -= trickle_drops;
                 }
-            }
-        }
-        //Make a second traversal over all landscape points
-        //3b) For each point, use the calculated number of raindrops that will trickle to the
-        //lowest neighbor(s) to update the number of raindrops at each lowest neighbor, if applicable.
-        for (int i = 0; i < dimension; i++) {
-            for (int j = 0; j < dimension; j++) {
-                new_rain_drops[i][j] += temp_trickle[i][j];
-                if (new_rain_drops[i][j] > 0) {
-                    is_dry = false;
+                if(i == threadID * blockSize || i == min((threadID + 1)* blockSize - 1, dimension - 1)) {
+                    lock.unlock();
                 }
             }
         }
-        if (is_dry && steps > time_steps) {
-            gettimeofday(&end_time, NULL);
-            return steps;
-        }
-        steps++;
-        temp_trickle = zero_trickle;
-        rain_drops = new_rain_drops;
-    }
+        
 }
